@@ -1,2 +1,0 @@
-# soroka-tracker
-Calculator
