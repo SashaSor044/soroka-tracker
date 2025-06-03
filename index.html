@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Історія заправок</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f0fdf4;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start p-4">
+
+  <div id="welcomeScreen" class="text-center bg-white p-8 rounded-xl shadow-xl border border-emerald-300 max-w-md w-full mt-10">
+    <h1 class="text-3xl font-bold text-emerald-700 mb-4">Зоряно, вітаємо! 👋</h1>
+    <p class="text-gray-600 mb-6">Дізнайтесь, на якому пробігу закінчиться пальне та перегляньте історію.</p>
+    <button onclick="startApp()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-6 rounded">Продовжити</button>
+  </div>
+
+  <div id="calculatorApp" class="hidden bg-white max-w-xl w-full p-6 rounded-xl shadow-xl border border-emerald-300 mt-10">
+    <h2 class="text-2xl font-bold text-center text-emerald-700 mb-6">⛽ Калькулятор Закінчення Пального</h2>
+
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Одометр при заправці (км)</label>
+      <input type="number" id="odometerRefuel" class="w-full border rounded p-2" placeholder="Наприклад, 123456">
+    </div>
+
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Кількість заправленого пального (л)</label>
+      <input type="number" id="litersAdded" class="w-full border rounded p-2" placeholder="Наприклад, 40">
+    </div>
+
+    <button onclick="calculate()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded w-full">Розрахувати</button>
+
+    <div id="result" class="mt-6 text-center text-lg text-gray-700 font-medium hidden"></div>
+  </div>
+
+  <div id="historySection" class="hidden bg-white max-w-xl w-full p-6 mt-6 rounded-xl shadow-xl border border-emerald-300">
+    <h2 class="text-xl font-bold text-emerald-700 mb-4 text-center">📜 Історія заправок</h2>
+    <table class="w-full table-auto text-sm border">
+      <thead>
+        <tr class="bg-emerald-100 text-emerald-900">
+          <th class="border px-2 py-1">Дата</th>
+          <th class="border px-2 py-1">Одометр</th>
+          <th class="border px-2 py-1">Літри</th>
+          <th class="border px-2 py-1">Кінець пробігу</th>
+        </tr>
+      </thead>
+      <tbody id="historyTable" class="text-center">
+        </tbody>
+    </table>
+    <button onclick="clearHistory()" class="mt-4 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded">Очистити історію</button>
+  </div>
+
+  <script>
+    const odometerInput = document.getElementById('odometerRefuel');
+    const litersInput = document.getElementById('litersAdded');
+    const resultDiv = document.getElementById('result');
+    const historyTable = document.getElementById('historyTable');
+    const historySection = document.getElementById('historySection');
+
+    function startApp() {
+      document.getElementById('welcomeScreen').classList.add('hidden');
+      document.getElementById('calculatorApp').classList.remove('hidden');
+      historySection.classList.remove('hidden');
+      loadLastInputs();
+      loadHistory();
+    }
+
+    function calculate() {
+      const odometer = parseFloat(odometerInput.value);
+      const liters = parseFloat(litersInput.value);
+      const fuelConsumption = 8; // 8 л/100 км
+
+      if (isNaN(odometer) || isNaN(liters) || odometer <= 0 || liters <= 0) {
+        resultDiv.textContent = "Будь ласка, введіть правильні значення.";
+        resultDiv.classList.remove("hidden");
+        return;
+      }
+
+      const distanceCanDrive = (liters / fuelConsumption) * 100;
+      const estimatedEnd = Math.round(odometer + distanceCanDrive);
+
+      resultDiv.textContent = `Пальне орієнтовно закінчиться на пробігу: ${estimatedEnd} км`;
+      resultDiv.classList.remove("hidden");
+
+      // Збереження останніх
+      localStorage.setItem('lastOdometer', odometer);
+      localStorage.setItem('lastLiters', liters);
+
+      // Додати в історію
+      const history = JSON.parse(localStorage.getItem('fuelHistory') || '[]');
+      history.unshift({
+        date: new Date().toLocaleString('uk-UA'),
+        odometer,
+        liters,
+        estimatedEnd
+      });
+      localStorage.setItem('fuelHistory', JSON.stringify(history));
+
+      // Показати оновлення
+      loadHistory();
+    }
+
+    function loadLastInputs() {
+      const savedOdometer = localStorage.getItem('lastOdometer');
+      const savedLiters = localStorage.getItem('lastLiters');
+      if (savedOdometer) odometerInput.value = savedOdometer;
+      if (savedLiters) litersInput.value = savedLiters;
+    }
+
+    function loadHistory() {
+      const history = JSON.parse(localStorage.getItem('fuelHistory') || '[]');
+      historyTable.innerHTML = "";
+      history.forEach(entry => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td class="border px-2 py-1">${entry.date}</td>
+          <td class="border px-2 py-1">${entry.odometer}</td>
+          <td class="border px-2 py-1">${entry.liters}</td>
+          <td class="border px-2 py-1">${entry.estimatedEnd}</td>
+        `;
+        historyTable.appendChild(row);
+      });
+    }
+
+    function clearHistory() {
+      if (confirm("Очистити всю історію заправок?")) {
+        localStorage.removeItem('fuelHistory');
+        loadHistory();
+      }
+    }
+  </script>
+
+</body>
+</html>
